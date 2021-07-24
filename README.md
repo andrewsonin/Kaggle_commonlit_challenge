@@ -2,7 +2,7 @@
 
 
 
-*Example of use Aleron's part*
+**Example of use Aleron's part**
 
 
 nlp = stanza.Pipeline('en', processors="tokenize,mwt,pos,lemma,depparse", model_dir= '../working/stanza-resourses-en/')

@@ -1,8 +1,7 @@
 from typing import List, Dict, Union
 
-import numpy as np
-
 import nltk
+import numpy as np
 from nltk import ne_chunk, pos_tag, word_tokenize
 from nltk.tree import Tree
 
@@ -14,7 +13,6 @@ nltk.download('tagsets')
 
 
 def get_named_entities(text: str) -> List[str]:
-
     continuous_chunk = []
     current_chunk = []
 
@@ -32,10 +30,6 @@ def get_named_entities(text: str) -> List[str]:
     return continuous_chunk
 
 
-_general_tags = frozenset(
-    {'gVB', 'gNN', 'gPR', 'gWP', 'gRB', 'gJJ'}
-)
-
 _raw_tags = frozenset(
     {
         'LS', 'TO', 'VBN', "''",
@@ -52,40 +46,52 @@ _raw_tags = frozenset(
     }
 )
 
+_general_tags = frozenset(
+    {'gVB', 'gNN', 'gPR', 'gWP', 'gRB', 'gJJ'}
+)
+
 _tagset = (
     *_raw_tags,
     *_general_tags
 )
 
 
-def count_part_of_speechs(text: str) -> Dict[str, Union[int, float]]:
-
-    total_count  = dict.fromkeys(_tagset, 0)
-    max_in_sent  = dict.fromkeys(_tagset, 0)
-    min_in_sent  = dict.fromkeys(_tagset, 0)
+def count_part_of_speech(text: str) -> Dict[str, Union[int, float]]:
+    total_count = dict.fromkeys(_tagset, 0)
+    max_in_sent = dict.fromkeys(_tagset, 0)
+    min_in_sent = dict.fromkeys(_tagset, 0)
     mean_in_sent = dict.fromkeys(_tagset, 0)
 
-    for word, pos in nltk.pos_tag(nltk.word_tokenize(text)):
-        total_count[pos] += 1
+    tokenized_text = nltk.word_tokenize(text)
+    inv_text_len = 1 / len(tokenized_text)
+    for word, pos in nltk.pos_tag(tokenized_text):
+        total_count[pos] += inv_text_len
         general_tag = f'g{pos[:2]}'
         if general_tag in _general_tags:
-            total_count[general_tag] += 1
+            total_count[general_tag] += inv_text_len
 
     sentences = nltk.sent_tokenize(text)
     num_sentences = len(sentences)
     num_words = []
+    words_len = []
 
+    ps = set()
+    general_ps = set()
     for sentence in map(nltk.word_tokenize, sentences):
         cur_sentence_stat = dict.fromkeys(_tagset, 0)
         num_words.append(len(sentence))
+        inv_sent_len = 1 / len(sentence)
         for word, pos in nltk.pos_tag(sentence):
-            cur_sentence_stat[pos] += 1
+            words_len.append(len(word))
+            cur_sentence_stat[pos] += inv_sent_len
+            ps.add(pos)
             general_tag = f'g{pos[:2]}'
             if general_tag in _general_tags:
-                cur_sentence_stat[general_tag] += 1
+                general_ps.add(general_tag)
+                cur_sentence_stat[general_tag] += inv_sent_len
         for tag in _tagset:
-            max_in_sent[tag]   = max(max_in_sent[tag], cur_sentence_stat[tag])
-            min_in_sent[tag]   = min(min_in_sent[tag], cur_sentence_stat[tag])
+            max_in_sent[tag] = max(max_in_sent[tag], cur_sentence_stat[tag])
+            min_in_sent[tag] = min(min_in_sent[tag], cur_sentence_stat[tag])
             mean_in_sent[tag] += cur_sentence_stat[tag] / num_sentences
 
     res = {}
@@ -99,8 +105,13 @@ def count_part_of_speechs(text: str) -> Dict[str, Union[int, float]]:
         res[f'MEAN_{k}'] = v
 
     num_words = np.array(num_words)
+    words_len = np.array(words_len)
     res['NUM_SENTENCES'] = num_sentences
     res['MEAN_NUM_WORDS'] = num_words.mean()
-    res['STD_NUM_WORDS'] = (((num_words - num_words.mean()) ** 2).sum() / len(num_words)) ** 0.5 
+    res['STD_NUM_WORDS'] = num_words.std()
+    res['NUM_WORDS'] = len(words_len)
+    res['MEAN_WORD_LEN'] = words_len.mean()
+    res['STD_WORD_LEN'] = words_len.std()
+    res['PS_UNIQUE'] = len(ps)
+    res['gPS_UNIQUE'] = len(general_ps)
     return res
-

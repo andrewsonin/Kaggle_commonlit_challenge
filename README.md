@@ -6,6 +6,8 @@
 
 
 ```
+from textcomplexity.cli import text_to_fuatures
+
 nlp = stanza.Pipeline('en', processors="tokenize,mwt,pos,lemma,depparse", model_dir= '~/resourses/')
 
 txt = 'Sey hello to my little NN model, Bro! MIPT is the best place!'
